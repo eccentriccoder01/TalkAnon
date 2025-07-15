@@ -19,6 +19,21 @@ class ChatApp {
         this.initializeApp();
         this.setupEventListeners();
         this.loadSettings();
+
+        socket.on("receive-message", (msg) => {
+            msg.formattedText = this.formatMessage(msg.text);
+            this.messages.get(this.currentRoom).push(msg);
+            this.renderMessage(msg);
+        });
+
+        socket.on("message-history", (messages) => {
+        this.messages.set(this.currentRoom, messages.map(msg => ({
+            ...msg,
+            formattedText: this.formatMessage(msg.text)
+        })));
+        this.renderMessages();
+        });
+
     }
 
     initializeApp() {
@@ -251,9 +266,6 @@ class ChatApp {
 
         // Process message formatting
         message.formattedText = this.formatMessage(messageText);
-        
-        this.messages.get(this.currentRoom).push(message);
-        this.renderMessage(message);
         
         messageInput.value = '';
         this.scrollToBottom();
@@ -663,16 +675,3 @@ let appInstance;
 window.closeModal = function(modalId) {
     appInstance?.closeModal(modalId);
 };
-
-socket.on("receive-message", (msg) => {
-  this.renderMessage({
-    ...msg,
-    userId: null,
-    type: 'text'
-  });
-});
-
-socket.on("message-history", (messages) => {
-  this.messages.set(this.currentRoom, messages);
-  this.renderMessages();
-});
