@@ -34,6 +34,20 @@ class ChatApp {
         this.renderMessages();
         });
 
+        socket.on("user-list", (userList) => {
+            this.users = new Map();
+
+            userList.forEach((user, index) => {
+                const generatedId = this.generateId();  // optional, or just use username as key
+                this.users.set(generatedId, {
+                    id: generatedId,
+                    username: user.username,
+                    status: 'online'
+                });
+            });
+
+            this.renderUsers();
+        });
     }
 
     initializeApp() {
@@ -194,7 +208,7 @@ class ChatApp {
             joinedAt: new Date()
         };
 
-        this.users.set(this.currentUser.id, this.currentUser);
+        // this.users.set(this.currentUser.id, this.currentUser);
         
         document.getElementById('loginModal').classList.add('hidden');
         document.getElementById('chatContainer').classList.remove('hidden');
