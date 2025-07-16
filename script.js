@@ -267,7 +267,10 @@ class ChatApp {
         const messageText = messageInput.value.trim();
 
         if (!messageText || !this.currentRoom) return;
-        socket.emit("send-message", messageText);
+        socket.emit("send-message", {
+            room: this.currentRoom,
+            text: messageText
+        });
 
         messageInput.value = '';
         this.scrollToBottom();
