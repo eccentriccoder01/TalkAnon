@@ -48,6 +48,17 @@ class ChatApp {
 
             this.renderUsers();
         });
+
+        socket.on("new-room", (room) => {
+        this.rooms.set(room.id, {
+            ...room,
+            users: new Set(),
+            messages: [],
+            created: new Date()
+        });
+        this.messages.set(room.id, []);
+        this.renderRooms();
+        });
     }
 
     initializeApp() {
@@ -260,25 +271,33 @@ class ChatApp {
         // Clear form
         document.getElementById('roomNameInput').value = '';
         document.getElementById('roomDescInput').value = '';
+
+        socket.emit("create-room", {
+        id: roomId,
+        name: roomName,
+        description: roomDesc || "No description"
+        });
     }
 
     handleSendMessage() {
-        const messageInput = document.getElementById('messageInput');
-        const messageText = messageInput.value.trim();
+    const messageInput = document.getElementById('messageInput');
+    const messageText = messageInput.value.trim();
 
-        if (!messageText || !this.currentRoom) return;
-        socket.emit("send-message", {
-            room: this.currentRoom,
-            text: messageText
-        });
+    if (!messageText || !this.currentRoom) return;
 
-        messageInput.value = '';
-        this.scrollToBottom();
-        this.clearTyping();
+    socket.emit("send-message", {
+        room: this.currentRoom,
+        text: messageText,
+        username: this.currentUser.username
+    });
 
-        if (this.settings.notificationSound) {
-            this.playNotificationSound();
-        }
+    messageInput.value = '';
+    this.scrollToBottom();
+    this.clearTyping();
+
+    if (this.settings.notificationSound) {
+        this.playNotificationSound();
+    }
     }
 
     handleTyping() {
@@ -317,12 +336,10 @@ class ChatApp {
     joinRoom(roomId) {
         if (!this.rooms.has(roomId)) return;
         
-        // Leave current room
         if (this.currentRoom) {
             this.rooms.get(this.currentRoom).users.delete(this.currentUser.id);
         }
-        
-        // Join new room
+        socket.emit("join-room", roomId);
         this.currentRoom = roomId;
         const room = this.rooms.get(roomId);
         room.users.add(this.currentUser.id);
@@ -331,33 +348,17 @@ class ChatApp {
         this.renderMessages();
         this.updateRoomHeader();
         this.renderUsers();
-        
-        // Add system message
         this.addSystemMessage(`${this.currentUser.username} joined the room`);
-        
-        // Focus message input
         document.getElementById('messageInput').focus();
     }
 
     formatMessage(text) {
-        // Bold text
         text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        
-        // Italic text
         text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        
-        // Links
         text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
-        
-        // Mentions
         text = text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-        
-        // Code blocks
         text = text.replace(/```(.*?)```/gs, '<div class="code-block"><pre>$1</pre></div>');
-        
-        // Inline code
         text = text.replace(/`(.*?)`/g, '<code>$1</code>');
-        
         return text;
     }
 
@@ -671,9 +672,7 @@ updateConnectionStatus() {
 
 window.addEventListener('DOMContentLoaded', () => {
     appInstance = new ChatApp();
-});
-
-// Provide global access to closeModal for inline HTML calls
+})
 let appInstance;
 window.closeModal = function(modalId) {
     appInstance?.closeModal(modalId);
