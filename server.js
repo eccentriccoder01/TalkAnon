@@ -36,16 +36,22 @@ io.on("connection", socket => {
     socket.emit("message-history", rooms[room]);
   });
 
-  socket.on("send-message", text => {
-    const user = users[socket.id];
-    const msg = {
-      username: user.username,
-      text,
-      timestamp: new Date()
-    };
-    rooms[user.room].push(msg);
-    io.to(user.room).emit("receive-message", msg);
-  });
+    socket.on("send-message", text => {
+        const user = users[socket.id];
+        if (!user || !user.room) {
+            console.log("Message blocked: user or room not found");
+            return;
+        }
+
+        const msg = {
+            username: user.username,
+            text,
+            timestamp: new Date()
+        };
+
+        rooms[user.room].push(msg);
+        io.to(user.room).emit("receive-message", msg);
+    });
 
   socket.on("disconnect", () => {
     const user = users[socket.id];

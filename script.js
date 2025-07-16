@@ -265,27 +265,14 @@ class ChatApp {
     handleSendMessage() {
         const messageInput = document.getElementById('messageInput');
         const messageText = messageInput.value.trim();
-        socket.emit("send-message", messageText);
+
         if (!messageText || !this.currentRoom) return;
+        socket.emit("send-message", messageText);
 
-        const message = {
-            id: ++this.messageId,
-            text: messageText,
-            userId: this.currentUser.id,
-            username: this.currentUser.username,
-            roomId: this.currentRoom,
-            timestamp: new Date(),
-            type: 'text'
-        };
-
-        // Process message formatting
-        message.formattedText = this.formatMessage(messageText);
-        
         messageInput.value = '';
         this.scrollToBottom();
         this.clearTyping();
-        
-        // Simulate message sound
+
         if (this.settings.notificationSound) {
             this.playNotificationSound();
         }
@@ -336,8 +323,7 @@ class ChatApp {
         this.currentRoom = roomId;
         const room = this.rooms.get(roomId);
         room.users.add(this.currentUser.id);
-        
-        // Update UI
+        socket.emit("join-room", roomId);
         this.updateRoomSelection();
         this.renderMessages();
         this.updateRoomHeader();
