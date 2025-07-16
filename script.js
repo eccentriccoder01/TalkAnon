@@ -22,8 +22,13 @@ class ChatApp {
 
         socket.on("receive-message", (msg) => {
             msg.formattedText = this.formatMessage(msg.text);
-            this.messages.get(this.currentRoom).push(msg);
-            this.renderMessage(msg);
+            if (!this.messages.has(msg.room)) {
+                this.messages.set(msg.room, []);
+            }
+            this.messages.get(msg.room).push(msg);
+            if (msg.room === this.currentRoom) {
+                this.renderMessage(msg);
+            }
         });
 
         socket.on("message-history", (messages) => {
@@ -339,12 +344,12 @@ class ChatApp {
         if (this.currentRoom) {
             this.rooms.get(this.currentRoom).users.delete(this.currentUser.id);
         }
-        socket.emit("join-room", roomId);
         this.currentRoom = roomId;
         const room = this.rooms.get(roomId);
         room.users.add(this.currentUser.id);
         socket.emit("join-room", roomId);
         this.updateRoomSelection();
+        document.getElementById('messagesArea').innerHTML = '';
         this.renderMessages();
         this.updateRoomHeader();
         this.renderUsers();

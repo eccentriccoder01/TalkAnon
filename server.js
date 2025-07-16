@@ -46,11 +46,12 @@ io.on("connection", socket => {
   socket.on("send-message", ({ room, text, username }) => {
     if (!room || !rooms[room]) return;
 
-    const msg = {
-      username: username || (users[socket.id]?.username || "Anonymous"),
-      text,
-      timestamp: new Date()
-    };
+  const msg = {
+    username: username || (users[socket.id]?.username || "Anonymous"),
+    text,
+    timestamp: new Date(),
+    room
+  };
 
     rooms[room].push(msg);
     io.to(room).emit("receive-message", msg);
