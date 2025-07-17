@@ -22,15 +22,26 @@ class ChatApp {
         this.initializeApp();
         this.setupEventListeners();
         this.loadSettings();
-        
+
         socket.on("receive-message", (msg) => {
             if (!msg || !msg.room) return;
+
+            // Check if message already exists to prevent duplicates
+            const roomMessages = this.messages.get(msg.room) || [];
+            const messageExists = roomMessages.some(existingMsg => 
+                existingMsg.id === msg.id || 
+                (existingMsg.username === msg.username && 
+                existingMsg.text === msg.text && 
+                Math.abs(new Date(existingMsg.timestamp) - new Date(msg.timestamp)) < 1000)
+            );
+
+            if (messageExists) return;
 
             if (!this.messages.has(msg.room)) {
                 this.messages.set(msg.room, []);
             }
 
-            // Add formatted text to the message (ensure this.formatMessage exists and works)
+            // Add formatted text to the message
             msg.formattedText = this.formatMessage(msg.text);
 
             this.messages.get(msg.room).push(msg);
@@ -40,7 +51,7 @@ class ChatApp {
                 this.renderMessage(msg);
                 this.scrollToBottom();
 
-                // Play notification sound if enabled
+                // Play notification sound if enabled (for messages from other users)
                 if (this.settings.notificationSound && this.currentUser && msg.username !== this.currentUser.username) {
                     this.playNotificationSound();
                 }
@@ -310,35 +321,13 @@ class ChatApp {
         });
     }
 
-// Inside the ChatApp class in script.js
-
     handleSendMessage() {
         const messageInput = document.getElementById('messageInput');
         const messageText = messageInput.value.trim();
 
         if (!messageText || !this.currentRoom || !this.currentUser) return;
 
-        // Create a complete message object locally, similar to what the server will broadcast
-        const newMessage = {
-            id: Date.now().toString(), // Client-side unique ID for immediate rendering
-            username: this.currentUser.username, // Use current user's username
-            text: messageText,
-            timestamp: new Date(), // Current time
-            room: this.currentRoom,
-            formattedText: this.formatMessage(messageText) // Pre-format for immediate display
-        };
-
-        // Store the message locally first
-        if (!this.messages.has(this.currentRoom)) {
-            this.messages.set(this.currentRoom, []);
-        }
-        this.messages.get(this.currentRoom).push(newMessage);
-
-        // Render the message immediately for the sender
-        this.renderMessage(newMessage);
-        this.scrollToBottom();
-
-        // Emit only essential message data to the server
+        // Simply emit the message to server - don't store locally
         socket.emit("send-message", {
             text: messageText,
             room: this.currentRoom
@@ -347,7 +336,7 @@ class ChatApp {
         // Clear the input and typing indicator
         messageInput.value = '';
         this.clearTyping();
-}
+    }
 
     handleTyping() {
         if (!this.currentRoom) return;
@@ -493,20 +482,18 @@ class ChatApp {
         this.scrollToBottom();
     }
 
-// Inside the ChatApp class in script.js
-
     renderMessage(message) {
         const messagesArea = document.getElementById('messagesArea');
         const messageElement = document.createElement('div');
         messageElement.className = 'message';
 
-        // *** IMPORTANT FIX: Compare usernames for 'own' class ***
+        // Compare usernames for 'own' class
         if (this.currentUser && message.username === this.currentUser.username) {
             messageElement.classList.add('own');
         }
 
         const avatar = message.username.charAt(0).toUpperCase();
-        const timestampHtml = this.settings.showTimestamps ? `<span class="timestamp">${this.formatTime(message.timestamp)}</span>` : '';
+        const timestampHtml = this.settings.showTimestamps ? `<span class="timestamp">${this.formatTime(new Date(message.timestamp))}</span>` : '';
 
         messageElement.innerHTML = `
             <div class="message-header">
