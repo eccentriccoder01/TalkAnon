@@ -310,24 +310,40 @@ class ChatApp {
     }
 
     handleSendMessage() {
-    const messageInput = document.getElementById('messageInput');
-    const messageText = messageInput.value.trim();
+        const messageInput = document.getElementById('messageInput');
+        const messageText = messageInput.value.trim();
 
-    if (!messageText || !this.currentRoom) return;
+        if (!messageText || !this.currentRoom || !this.currentUser) return; // Add check for currentUser
 
-    // Create message object
-    const message = {
-        text: messageText,
-        room: this.currentRoom
-    };
+        // Create a complete message object similar to what the server sends
+        const newMessage = {
+            id: Date.now().toString(), // Unique ID, similar to server's
+            username: this.currentUser.username, // Use current user's username
+            text: messageText,
+            timestamp: new Date(), // Current time
+            room: this.currentRoom,
+            formattedText: this.formatMessage(messageText) // Pre-format for immediate display
+        };
 
-    // Emit the message to the server
-    socket.emit("send-message", message);
+        // Store the message locally first
+        if (!this.messages.has(this.currentRoom)) {
+            this.messages.set(this.currentRoom, []);
+        }
+        this.messages.get(this.currentRoom).push(newMessage);
 
-    // Clear the input
-    messageInput.value = '';
-    this.scrollToBottom();
-    this.clearTyping();
+        // Render the message immediately
+        this.renderMessage(newMessage);
+        this.scrollToBottom();
+
+        // Emit the message to the server for broadcasting to others
+        socket.emit("send-message", {
+            text: messageText, // Only send necessary data to the server
+            room: this.currentRoom
+        });
+
+        // Clear the input
+        messageInput.value = '';
+        this.clearTyping();
     }
 
     handleTyping() {
