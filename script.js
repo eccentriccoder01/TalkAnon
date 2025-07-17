@@ -24,26 +24,26 @@ class ChatApp {
         this.loadSettings();
 
         socket.on("receive-message", (msg) => {
-        if (!msg || !msg.room) return;
-        
-        if (!this.messages.has(msg.room)) {
-            this.messages.set(msg.room, []);
-        }
-        
-        // Add formatted text to the message
-        msg.formattedText = this.formatMessage(msg.text);
-        
-        this.messages.get(msg.room).push(msg);
-        
-        if (msg.room === this.currentRoom) {
-            this.renderMessage(msg);
-            this.scrollToBottom();
-            
-            // Play notification sound if enabled
-            if (this.settings.notificationSound && msg.username !== this.currentUser.username) {
-            this.playNotificationSound();
+            if (!msg || !msg.room) return;
+
+            if (!this.messages.has(msg.room)) {
+                this.messages.set(msg.room, []);
             }
-        }
+
+            // Add formatted text to the message
+            msg.formattedText = this.formatMessage(msg.text);
+
+            this.messages.get(msg.room).push(msg);
+
+            if (msg.room === this.currentRoom) {
+                this.renderMessage(msg);
+                this.scrollToBottom();
+
+                // Play notification sound if enabled
+                if (this.settings.notificationSound && msg.username !== this.currentUser.username) {
+                    this.playNotificationSound();
+                }
+            }
         });
 
         socket.on("message-history", (messages) => {
@@ -479,7 +479,7 @@ class ChatApp {
         const messageElement = document.createElement('div');
         messageElement.className = 'message';
         
-        if (message.userId === this.currentUser.id) {
+        if (this.currentUser && message.username === this.currentUser.username) {
             messageElement.classList.add('own');
         }
         
