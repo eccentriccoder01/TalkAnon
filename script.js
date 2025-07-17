@@ -22,7 +22,7 @@ class ChatApp {
         this.initializeApp();
         this.setupEventListeners();
         this.loadSettings();
-
+        
         socket.on("receive-message", (msg) => {
             if (!msg || !msg.room) return;
 
@@ -30,17 +30,18 @@ class ChatApp {
                 this.messages.set(msg.room, []);
             }
 
-            // Add formatted text to the message
+            // Add formatted text to the message (ensure this.formatMessage exists and works)
             msg.formattedText = this.formatMessage(msg.text);
 
             this.messages.get(msg.room).push(msg);
 
+            // Only render if the message belongs to the currently active room
             if (msg.room === this.currentRoom) {
                 this.renderMessage(msg);
                 this.scrollToBottom();
 
                 // Play notification sound if enabled
-                if (this.settings.notificationSound && msg.username !== this.currentUser.username) {
+                if (this.settings.notificationSound && this.currentUser && msg.username !== this.currentUser.username) {
                     this.playNotificationSound();
                 }
             }
@@ -309,15 +310,17 @@ class ChatApp {
         });
     }
 
+// Inside the ChatApp class in script.js
+
     handleSendMessage() {
         const messageInput = document.getElementById('messageInput');
         const messageText = messageInput.value.trim();
 
-        if (!messageText || !this.currentRoom || !this.currentUser) return; // Add check for currentUser
+        if (!messageText || !this.currentRoom || !this.currentUser) return;
 
-        // Create a complete message object similar to what the server sends
+        // Create a complete message object locally, similar to what the server will broadcast
         const newMessage = {
-            id: Date.now().toString(), // Unique ID, similar to server's
+            id: Date.now().toString(), // Client-side unique ID for immediate rendering
             username: this.currentUser.username, // Use current user's username
             text: messageText,
             timestamp: new Date(), // Current time
@@ -331,20 +334,20 @@ class ChatApp {
         }
         this.messages.get(this.currentRoom).push(newMessage);
 
-        // Render the message immediately
+        // Render the message immediately for the sender
         this.renderMessage(newMessage);
         this.scrollToBottom();
 
-        // Emit the message to the server for broadcasting to others
+        // Emit only essential message data to the server
         socket.emit("send-message", {
-            text: messageText, // Only send necessary data to the server
+            text: messageText,
             room: this.currentRoom
         });
 
-        // Clear the input
+        // Clear the input and typing indicator
         messageInput.value = '';
         this.clearTyping();
-    }
+}
 
     handleTyping() {
         if (!this.currentRoom) return;
@@ -490,38 +493,31 @@ class ChatApp {
         this.scrollToBottom();
     }
 
+// Inside the ChatApp class in script.js
+
     renderMessage(message) {
         const messagesArea = document.getElementById('messagesArea');
         const messageElement = document.createElement('div');
         messageElement.className = 'message';
-        
+
+        // *** IMPORTANT FIX: Compare usernames for 'own' class ***
         if (this.currentUser && message.username === this.currentUser.username) {
             messageElement.classList.add('own');
         }
-        
-        if (message.type === 'system') {
-            messageElement.className = 'system-message';
-            messageElement.textContent = message.text;
-            messagesArea.appendChild(messageElement);
-            return;
-        }
-        
-        const timeString = this.settings.showTimestamps ? 
-            this.formatTime(message.timestamp) : '';
-        
+
+        const avatar = message.username.charAt(0).toUpperCase();
+        const timestampHtml = this.settings.showTimestamps ? `<span class="timestamp">${this.formatTime(message.timestamp)}</span>` : '';
+
         messageElement.innerHTML = `
-            <div class="message-avatar">
-                ${message.username.charAt(0).toUpperCase()}
+            <div class="message-header">
+                <div class="avatar">${avatar}</div>
+                <span class="username">${message.username}</span>
+                ${timestampHtml}
             </div>
             <div class="message-content">
-                <div class="message-header">
-                    <span class="message-username">${message.username}</span>
-                    ${timeString ? `<span class="message-time">${timeString}</span>` : ''}
-                </div>
-                <div class="message-text">${message.formattedText || message.text}</div>
+                ${message.formattedText || message.text}
             </div>
         `;
-        
         messagesArea.appendChild(messageElement);
     }
 
