@@ -1,4 +1,7 @@
-const socket = io("https://talkanon.onrender.com");
+const socket = io("https://talkanon.onrender.com", {
+  transports: ["websocket"],
+  upgrade: false
+});
 class ChatApp {
     constructor() {
         this.currentUser = null;
@@ -21,14 +24,26 @@ class ChatApp {
         this.loadSettings();
 
         socket.on("receive-message", (msg) => {
-            msg.formattedText = this.formatMessage(msg.text);
-            if (!this.messages.has(msg.room)) {
-                this.messages.set(msg.room, []);
+        if (!msg || !msg.room) return;
+        
+        if (!this.messages.has(msg.room)) {
+            this.messages.set(msg.room, []);
+        }
+        
+        // Add formatted text to the message
+        msg.formattedText = this.formatMessage(msg.text);
+        
+        this.messages.get(msg.room).push(msg);
+        
+        if (msg.room === this.currentRoom) {
+            this.renderMessage(msg);
+            this.scrollToBottom();
+            
+            // Play notification sound if enabled
+            if (this.settings.notificationSound && msg.username !== this.currentUser.username) {
+            this.playNotificationSound();
             }
-            this.messages.get(msg.room).push(msg);
-            if (msg.room === this.currentRoom) {
-                this.renderMessage(msg);
-            }
+        }
         });
 
         socket.on("message-history", (messages) => {
@@ -63,6 +78,16 @@ class ChatApp {
         });
         this.messages.set(room.id, []);
         this.renderRooms();
+        });
+
+        socket.on("connect_error", (err) => {
+        console.log("Connection error:", err);
+        this.showNotification('Connection error. Trying to reconnect...', 'error');
+        });
+
+        socket.on("reconnect", () => {
+        console.log("Reconnected to server");
+        this.showNotification('Reconnected to server', 'success');
         });
     }
 
@@ -290,19 +315,19 @@ class ChatApp {
 
     if (!messageText || !this.currentRoom) return;
 
-    socket.emit("send-message", {
-        room: this.currentRoom,
+    // Create message object
+    const message = {
         text: messageText,
-        username: this.currentUser.username
-    });
+        room: this.currentRoom
+    };
 
+    // Emit the message to the server
+    socket.emit("send-message", message);
+
+    // Clear the input
     messageInput.value = '';
     this.scrollToBottom();
     this.clearTyping();
-
-    if (this.settings.notificationSound) {
-        this.playNotificationSound();
-    }
     }
 
     handleTyping() {
@@ -365,6 +390,12 @@ class ChatApp {
         text = text.replace(/```(.*?)```/gs, '<div class="code-block"><pre>$1</pre></div>');
         text = text.replace(/`(.*?)`/g, '<code>$1</code>');
         return text;
+    }
+
+    playNotificationSound() {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3');
+    audio.volume = 0.3;
+    audio.play().catch(e => console.log("Audio play failed:", e));
     }
 
     renderRooms() {
