@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalkAnon - Anonymous Chatrooms</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="favicon/favicon.svg" />
+    <link rel="shortcut icon" href="favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="TalkAnon" />
+    <link rel="manifest" href="favicon/site.webmanifest" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-comments"></i> Welcome to TalkAnon</h2>
+                <p>Enter your username to start chatting</p>
+            </div>
+            <form id="loginForm">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="usernameInput" placeholder="Enter your username" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Join Chat
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div id="chatContainer" class="chat-container hidden">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-comments"></i><img src="T.png" alt="T" style="height: 2rem; transform: translateY(10px); margin-left: 5px;">alkAnon</h3>
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <span id="currentUsername"></span>
+                </div>
+            </div>
+
+            <!-- Room List -->
+            <div class="rooms-section">
+                <div class="section-header">
+                    <h4><i class="fas fa-door-open"></i> Rooms</h4>
+                    <button id="createRoomBtn" class="btn-icon" title="Create Room">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div id="roomsList" class="rooms-list">
+                    <!-- Rooms will be populated here -->
+                </div>
+            </div>
+
+            <!-- Online Users -->
+            <div class="users-section">
+                <div class="section-header">
+                    <h4><i class="fas fa-users"></i> Online Users</h4>
+                    <span id="userCount" class="user-count">0</span>
+                </div>
+                <div id="usersList" class="users-list">
+                    <!-- Users will be populated here -->
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <button id="settingsBtn" class="btn-secondary">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+                <button id="logoutBtn" class="btn-danger">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="main-chat">
+            <div class="chat-header">
+                <div class="room-info">
+                    <h3 id="currentRoomName">Select a room</h3>
+                    <span id="roomUserCount">0 users</span>
+                </div>
+                <div class="chat-actions">
+                    <button id="toggleSidebar" class="btn-icon mobile-only">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <button id="roomSettingsBtn" class="btn-icon">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="messages-container">
+                <div id="messagesArea" class="messages-area">
+                    <div class="welcome-message">
+                        <i class="fas fa-comments"></i>
+                        <h3>Welcome to TalkAnon</h3>
+                        <p>Select a room to start chatting or create a new one!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="message-input-container">
+                <div class="typing-indicator" id="typingIndicator"></div>
+                <form id="messageForm" class="message-form">
+                    <div class="input-wrapper">
+                        <input type="text" id="messageInput" placeholder="Type a message..." autocomplete="off">
+                        <div class="input-actions">
+                            <button type="button" id="emojiBtn" class="btn-icon">
+                                <i class="fas fa-smile"></i>
+                            </button>
+                            <button type="button" id="attachBtn" class="btn-icon">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <button type="submit" class="btn-send">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div id="createRoomModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus"></i> Create New Room</h3>
+                <button class="modal-close" onclick="closeModal('createRoomModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="createRoomForm">
+                <div class="input-group">
+                    <i class="fas fa-door-open"></i>
+                    <input type="text" id="roomNameInput" placeholder="Room name" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-info-circle"></i>
+                    <input type="text" id="roomDescInput" placeholder="Room description (optional)">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('createRoomModal')">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Create Room
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Settings</h3>
+                <button class="modal-close" onclick="closeModal('settingsModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="notificationSound">
+                        <i class="fas fa-volume-up"></i> Notification Sound
+                    </label>
+                    <input type="checkbox" id="notificationSound" checked>
+                </div>
+                <div class="setting-item">
+                    <label for="darkMode">
+                        <i class="fas fa-moon"></i> Dark Mode
+                    </label>
+                    <input type="checkbox" id="darkMode">
+                </div>
+                <div class="setting-item">
+                    <label for="showTimestamps">
+                        <i class="fas fa-clock"></i> Show Timestamps
+                    </label>
+                    <input type="checkbox" id="showTimestamps" checked>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji Picker -->
+    <div id="emojiPicker" class="emoji-picker hidden">
+        <div class="emoji-grid">
+            <span class="emoji" data-emoji="😀">😀</span>
+            <span class="emoji" data-emoji="😂">😂</span>
+            <span class="emoji" data-emoji="😊">😊</span>
+            <span class="emoji" data-emoji="😍">😍</span>
+            <span class="emoji" data-emoji="🤔">🤔</span>
+            <span class="emoji" data-emoji="😎">😎</span>
+            <span class="emoji" data-emoji="😢">😢</span>
+            <span class="emoji" data-emoji="😮">😮</span>
+            <span class="emoji" data-emoji="👍">👍</span>
+            <span class="emoji" data-emoji="👎">👎</span>
+            <span class="emoji" data-emoji="❤️">❤️</span>
+            <span class="emoji" data-emoji="🔥">🔥</span>
+            <span class="emoji" data-emoji="💯">💯</span>
+            <span class="emoji" data-emoji="🎉">🎉</span>
+            <span class="emoji" data-emoji="🚀">🚀</span>
+            <span class="emoji" data-emoji="⚡">⚡</span>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <div class="developer-credit">
+        <a href="https://eccentriccoder01.github.io/Me" target="_blank" class="explorer-signature" title="Visit My World">
+            Developed by <span class="eccentric">Eccentric Explorer</span>
+        </a>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
